@@ -137,7 +137,7 @@
                                             </a>
 
                                             {{-- Signed URL --}}
-                                            <button class="btn btn-sm btn-outline btn-accent" @click="$dispatch('open-signed-url-modal', { path: '{{ $file['path'] }}' })">
+                                            <button class="btn btn-sm btn-outline btn-accent" onclick="window.dispatchEvent(new CustomEvent('open-signed-url-modal', { detail: { path: '{{ $file['path'] }}' } }))">
                                                 Signed URL
                                             </button>
 
@@ -166,7 +166,11 @@
     </div>
 
     {{-- Signed URL Modal --}}
-    <dialog id="signed-url-modal" class="modal" x-data="signedUrlModal()" x-ref="modal" @close="reset()" @open-signed-url-modal.window="openModal($event.detail.path)">
+    <dialog id="signed-url-modal" class="modal"
+        x-data="signedUrlModal('{{ route('s3.signed-url') }}')"
+        x-ref="modal"
+        x-on:close="reset()"
+        x-on:open-signed-url-modal.window="openModal($event.detail.path)">
         <div class="modal-box">
             <h3 class="text-lg font-bold">Generate Signed URL</h3>
             <p class="py-2 text-base-content/60" x-text="filePath"></p>
@@ -203,72 +207,10 @@
                     <span x-show="!loading">Generate</span>
                     <span x-show="loading" class="loading loading-spinner loading-sm"></span>
                 </button>
-                <form method="dialog">
-                    <button class="btn" x-text="url ? 'Close' : 'Cancel'"></button>
-                </form>
+                <button class="btn" @click="$refs.modal.close()" x-text="url ? 'Close' : 'Cancel'"></button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 </div>
-
-<x-slot:scripts>
-<script>
-    function signedUrlModal() {
-        return {
-            filePath: '',
-            expiry: 10,
-            url: '',
-            copied: false,
-            error: '',
-            loading: false,
-            openModal(path) {
-                this.filePath = path;
-                this.$refs.modal.showModal();
-            },
-            reset() {
-                this.filePath = '';
-                this.expiry = 10;
-                this.url = '';
-                this.copied = false;
-                this.error = '';
-                this.loading = false;
-            },
-            async generate() {
-                this.loading = true;
-                this.error = '';
-
-                try {
-                    const response = await fetch('{{ route('s3.signed-url') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({ path: this.filePath, expiry: this.expiry }),
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        throw new Error(data.message || 'Failed to generate signed URL.');
-                    }
-
-                    const data = await response.json();
-                    this.url = data.url;
-                } catch (e) {
-                    this.error = e.message;
-                } finally {
-                    this.loading = false;
-                }
-            },
-            async copy() {
-                await navigator.clipboard.writeText(this.url);
-                this.copied = true;
-                setTimeout(() => this.copied = false, 2000);
-            }
-        };
-    }
-</script>
-</x-slot:scripts>
 </x-layouts.app>
