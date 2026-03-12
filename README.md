@@ -33,7 +33,7 @@ Copy `.env.example` to `.env` and configure the following:
 | `AWS_ENDPOINT` | Custom endpoint URL (optional, for S3-compatible services like MinIO) |
 | `AWS_USE_PATH_STYLE_ENDPOINT` | Set to `true` when using MinIO or other path-style services |
 
-## Setup
+## Setup (Local)
 
 ```bash
 composer install
@@ -42,6 +42,34 @@ cp .env.example .env
 php artisan key:generate
 npm run build
 ```
+
+## Setup (Docker)
+
+Build the production image:
+
+```bash
+docker build --target deploy -t swiss-knife .
+```
+
+Run the container, passing the required environment variables:
+
+```bash
+docker run -d -p 8080:8080 \
+  -e APP_KEY=base64:your-generated-key \
+  -e AWS_ACCESS_KEY_ID=your-access-key \
+  -e AWS_SECRET_ACCESS_KEY=your-secret-key \
+  -e AWS_DEFAULT_REGION=ap-south-1 \
+  -e AWS_BUCKET=your-bucket \
+  swiss-knife
+```
+
+Generate an `APP_KEY` beforehand with:
+
+```bash
+docker run --rm swiss-knife php artisan key:generate --show
+```
+
+The app will be available at `http://localhost:8080`.
 
 ## License
 
