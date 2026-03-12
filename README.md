@@ -71,6 +71,26 @@ docker run --rm swiss-knife php artisan key:generate --show
 
 The app will be available at `http://localhost:8080`.
 
+## Setup (GHCR Image)
+
+A pre-built image is available on GitHub Container Registry. Pull and run it directly:
+
+```bash
+docker run -d -p 8080:8080 \
+  -e APP_KEY=base64:your-generated-key \
+  -e AWS_ACCESS_KEY_ID=your-access-key \
+  -e AWS_SECRET_ACCESS_KEY=your-secret-key \
+  -e AWS_DEFAULT_REGION=ap-south-1 \
+  -e AWS_BUCKET=your-bucket \
+  ghcr.io/chinmaypurav/swiss-knife:main
+```
+
+Generate an `APP_KEY` with:
+
+```bash
+docker run --rm ghcr.io/chinmaypurav/swiss-knife:main php artisan key:generate --show
+```
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
