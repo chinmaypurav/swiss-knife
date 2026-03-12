@@ -12,7 +12,7 @@
 <body class="min-h-screen bg-base-200">
     <div class="navbar bg-base-100 shadow-sm">
         <div class="flex-1">
-            <a href="/" class="btn btn-ghost text-xl">{{ config('app.name', 'Swiss Knife') }}</a>
+            <a href="{{ route('home') }}" class="btn btn-ghost text-xl">{{ config('app.name', 'Swiss Knife') }}</a>
         </div>
         <div class="flex-none">
             <ul class="menu menu-horizontal px-1">
