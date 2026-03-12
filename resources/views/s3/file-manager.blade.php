@@ -120,7 +120,7 @@
 
                             {{-- Files --}}
                             @foreach($files as $file)
-                                <tr x-data="signedUrl()">
+                                <tr>
                                     <td>
                                         <div class="flex items-center gap-2">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
@@ -137,19 +137,9 @@
                                             </a>
 
                                             {{-- Signed URL --}}
-                                            <button class="btn btn-sm btn-outline btn-accent" @click="generate('{{ $file['path'] }}')">
+                                            <button class="btn btn-sm btn-outline btn-accent" @click="$dispatch('open-signed-url-modal', { path: '{{ $file['path'] }}' })">
                                                 Signed URL
                                             </button>
-
-                                            {{-- Signed URL Result --}}
-                                            <template x-if="url">
-                                                <div class="flex items-center gap-2">
-                                                    <input type="text" :value="url" class="input input-bordered input-sm w-64" readonly>
-                                                    <button class="btn btn-sm btn-ghost" @click="copy()">Copy</button>
-                                                </div>
-                                            </template>
-                                            <span x-show="copied" x-transition class="text-success text-sm">Copied!</span>
-                                            <span x-show="error" x-transition class="text-error text-sm" x-text="error"></span>
 
                                             {{-- Delete --}}
                                             <form action="{{ route('s3.destroy', ['path' => $file['path']]) }}" method="POST"
@@ -174,19 +164,79 @@
             @endif
         </div>
     </div>
+
+    {{-- Signed URL Modal --}}
+    <dialog id="signed-url-modal" class="modal" x-data="signedUrlModal()" x-ref="modal" @close="reset()" @open-signed-url-modal.window="openModal($event.detail.path)">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold">Generate Signed URL</h3>
+            <p class="py-2 text-base-content/60" x-text="filePath"></p>
+
+            {{-- Duration Input --}}
+            <div x-show="!url" class="form-control w-full mt-2">
+                <label class="label" for="signed-url-expiry">
+                    <span class="label-text">Duration (minutes)</span>
+                </label>
+                <input type="number" id="signed-url-expiry" x-model.number="expiry" min="1" max="10080" class="input input-bordered w-full" />
+            </div>
+
+            {{-- Error --}}
+            <div x-show="error" x-transition class="alert alert-error mt-4">
+                <span x-text="error"></span>
+            </div>
+
+            {{-- Success --}}
+            <template x-if="url">
+                <div class="mt-4 space-y-3">
+                    <div class="alert alert-success">
+                        <span>Signed URL generated successfully!</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" :value="url" class="input input-bordered w-full text-sm" readonly>
+                        <button class="btn btn-sm btn-ghost" @click="copy()">Copy</button>
+                    </div>
+                    <span x-show="copied" x-transition class="text-success text-sm">Copied to clipboard!</span>
+                </div>
+            </template>
+
+            <div class="modal-action">
+                <button x-show="!url" class="btn btn-accent" :disabled="loading" @click="generate()">
+                    <span x-show="!loading">Generate</span>
+                    <span x-show="loading" class="loading loading-spinner loading-sm"></span>
+                </button>
+                <form method="dialog">
+                    <button class="btn" x-text="url ? 'Close' : 'Cancel'"></button>
+                </form>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
 </div>
 
 <x-slot:scripts>
 <script>
-    function signedUrl() {
+    function signedUrlModal() {
         return {
+            filePath: '',
+            expiry: 10,
             url: '',
             copied: false,
             error: '',
-            async generate(path) {
+            loading: false,
+            openModal(path) {
+                this.filePath = path;
+                this.$refs.modal.showModal();
+            },
+            reset() {
+                this.filePath = '';
+                this.expiry = 10;
                 this.url = '';
-                this.error = '';
                 this.copied = false;
+                this.error = '';
+                this.loading = false;
+            },
+            async generate() {
+                this.loading = true;
+                this.error = '';
 
                 try {
                     const response = await fetch('{{ route('s3.signed-url') }}', {
@@ -196,7 +246,7 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             'Accept': 'application/json',
                         },
-                        body: JSON.stringify({ path: path, expiry: 60 }),
+                        body: JSON.stringify({ path: this.filePath, expiry: this.expiry }),
                     });
 
                     if (!response.ok) {
@@ -208,6 +258,8 @@
                     this.url = data.url;
                 } catch (e) {
                     this.error = e.message;
+                } finally {
+                    this.loading = false;
                 }
             },
             async copy() {
